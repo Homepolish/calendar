@@ -233,6 +233,10 @@ defmodule Calendar.DateTime.Parse do
       iex> rfc3339_utc("fooo")
       {:bad_format, nil}
 
+      # Missing time zone offset
+      iex> rfc3339_utc("1996-12-19T16:39:57")
+      {:bad_format, nil}
+
       iex> rfc3339_utc("1996-12-19T16:39:57Z")
       {:ok, %DateTime{year: 1996, month: 12, day: 19, hour: 16, minute: 39, second: 57, time_zone: "Etc/UTC", zone_abbr: "UTC", std_offset: 0, utc_offset: 0}}
 
@@ -308,7 +312,7 @@ defmodule Calendar.DateTime.Parse do
   defp parse_rfc3339_as_utc_parsed_string(mapped, _z, offset_hours, offset_mins) when offset_hours == "00" and offset_mins == "00" do
     Calendar.DateTime.from_erl(erl_date_time_from_regex_map(mapped), "Etc/UTC", parse_fraction(mapped["fraction"]))
   end
-  defp parse_rfc3339_as_utc_parsed_string(mapped, _z, offset_hours, offset_mins) do
+  defp parse_rfc3339_as_utc_parsed_string(mapped, _z, offset_hours, offset_mins) when offset_hours != "" and offset_mins != "" do
     offset_in_secs = hours_mins_to_secs!(offset_hours, offset_mins)
     offset_in_secs = case mapped["offset_sign"] do
       "-" -> offset_in_secs*-1
@@ -316,6 +320,9 @@ defmodule Calendar.DateTime.Parse do
     end
     erl_date_time = erl_date_time_from_regex_map(mapped)
     parse_rfc3339_as_utc_with_offset(offset_in_secs, erl_date_time, parse_fraction(mapped["fraction"]))
+  end
+  defp parse_rfc3339_as_utc_parsed_string(_mapped, _z, _offset_hours, _offset_mins) do
+    {:bad_format, nil}
   end
 
   defp parse_fraction("." <> frac), do: parse_fraction(frac)
